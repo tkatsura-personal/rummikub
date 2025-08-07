@@ -3,8 +3,19 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
+import { db } from './lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+
 function App() {
   const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    async function testConnection() {
+      const snapshot = await getDocs(collection(db, 'test'));
+      console.log("Firebase connected: ", snapshot.empty ? "No docs yet" : "Has data");
+    }
+    testConnection();
+  }, []);
 
   return (
     <>
@@ -32,4 +43,4 @@ function App() {
   )
 }
 
-export default App
+export default App;
