@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { useEffect } from "react";
-import ReactDOM from "react-dom";
-import Draggable from 'react-draggable';
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
@@ -53,12 +51,11 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
-      <Draggable>
-        <div className="p-4">
-          <h1 className="text-xl font-bold">Rummikub Firebase Test</h1>
-          <p>Check the browser console for results.</p>
-        </div>
-      </Draggable>
+      <div className="p-4">
+        draggable={true}
+        <h1 className="text-xl font-bold">Rummikub Firebase Test</h1>
+        <p>Check the browser console for results.</p>
+      </div>
     </>
   )
 }
