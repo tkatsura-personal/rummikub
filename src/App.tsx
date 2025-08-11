@@ -51,8 +51,7 @@ function App() {
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
-      <div className="p-4">
-        draggable={true}
+      <div className="p-4" draggable={true} onDragStart={e => console.log('onDragStart')} onDragEnd={e => console.log('onDragEnd')}>
         <h1 className="text-xl font-bold">Rummikub Firebase Test</h1>
         <p>Check the browser console for results.</p>
       </div>
