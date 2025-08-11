@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useEffect } from "react";
+import ReactDOM from "react-dom";
 import Draggable from 'react-draggable';
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
