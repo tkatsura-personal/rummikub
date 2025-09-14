@@ -1,10 +1,10 @@
 import React from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 
 import { db } from "./lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
 type TileProps = {
   width: number;
@@ -14,24 +14,50 @@ type TileProps = {
   selected: boolean;
 };
 
-function Tile({ width, height, x, y, onPointerDown, selected }: TileProps) {
-  return (
-    <div
-      className={"tile"}
-      style={{ 
-        width,
-        height,
-        left: x, 
-        top: y, 
-        border: selected ? "2px solid red" : "none" 
-      }}
-      onPointerDown={onPointerDown}
-    ></div>
-  );
+class Tile extends React.Component<
+  TileProps & { onPointerDown: (e: React.PointerEvent) => void }
+> {
+  state = { pressed: false };
+
+  handlePointerDown = (e: React.PointerEvent) => {
+    this.setState({ pressed: true });
+    this.props.onPointerDown(e);
+  };
+
+  handlePointerUp = () => {
+    this.setState({ pressed: false });
+  };
+
+  componentDidMount() {
+    document.addEventListener("pointerup", this.handlePointerUp);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener("pointerup", this.handlePointerUp);
+  }
+
+  render() {
+    const { width, height, x, y, selected } = this.props;
+    const { pressed } = this.state;
+    return (
+      <div
+        className={"tile"}
+        style={{
+          width,
+          height,
+          left: x,
+          top: y,
+          border: selected ? "2px solid red" : "none",
+          boxShadow: pressed ? "0 0 10px #333" : "none"
+        }}
+        onPointerDown={this.handlePointerDown}
+      ></div>
+    );
+  }
 }
 
 const defaultTile = {
-  width: 100,
+  width: 80,
   height: 100,
   x: 200,
   y: 200
@@ -40,45 +66,62 @@ const defaultTile = {
 function App() {
   const [tileSelected, setTileSelected] = React.useState(false)
   const [tile, setTile] = React.useState(defaultTile);
-  const [offset, setOffset] = React.useState<[number, number]>([0, 0]);
   const [pointer, setPointer] = React.useState<[number, number]>();
 
-  const onPointerDown = (e) => {
+  const handleMousePress = (e) => {
     setTileSelected((b) => !b);
     const x = e.pageX - tile.x;
     const y = e.pageY - tile.y;
-    setOffset([x, y]);
+    setPointer([x, y]);
+  };
+
+  const handleMouseTrack = (e) => {
+    const x = e.pageX;
+    const y = e.pageY;
+    setPointer([x, y]);
+    //console.log("Pointer move:", x, y);
+  }
+
+  const handleMouseRelease = (e) => {
+    if (tileSelected) {
+      //Check the current tile position after the mouse is released
+      console.log("check if pointer is within the page bounds");
+      const rect = document.documentElement.getBoundingClientRect();
+      console.log("Page bounds:", rect);
+      console.log("Tile position:", tile);
+      if (tile.x < rect.left || tile.x + tile.width > rect.right ||
+          tile.y < rect.top || tile.y + tile.height > rect.bottom) {
+        console.warn("Tile out of bounds, resetting position");
+        //Snap to closest point inside the border
+        setTile({
+          ...tile, 
+          x: Math.min(Math.max(tile.x, rect.left + 50), rect.right - (tile.width + 50)), 
+          y: Math.min(Math.max(tile.y, rect.top + 50), rect.bottom - (tile.height + 50)) 
+        });
+      }
+      setTileSelected(false);
+    }
   }
   
   React.useEffect(() => {
-    const handleMouseTrack = (e) => {
-      //shift block so that block doesn't snap to top left
-      const x = e.pageX - offset[0];
-      const y = e.pageY - offset[1];
-      setPointer([x, y]);
-    }
-
-    const handleMouseRelease = (e) => {
-      if (tileSelected) {
-        //Check the current tile position after the mouse is released
-        console.log("check if pointer is within the page bounds");
-        const rect = document.documentElement.getBoundingClientRect();
-        console.log("Page bounds:", rect);
-        console.log("Tile position:", tile);
-        if (tile.x < rect.left || tile.x + tile.width > rect.right ||
-            tile.y < rect.top || tile.y + tile.height > rect.bottom) {
-          console.warn("Tile out of bounds, resetting position");
-          //Snap to closest point inside the border
-          setTile({
-            ...tile, 
-            x: Math.min(Math.max(tile.x, rect.left + 50), rect.right - (tile.width + 50)), 
-            y: Math.min(Math.max(tile.y, rect.top + 50), rect.bottom - (tile.height + 50)) 
-          });
-        }
-        setTileSelected(false);
+    async function testConnection() {
+      try {
+        const snapshot = await getDocs(collection(db, "test"));
+        console.log(
+          "✅ Firebase connected:",
+          snapshot.empty ? "No docs found" : `${snapshot.size} docs found`
+        );
+        snapshot.forEach(doc => {
+          console.log("📄 Doc:", doc.id, doc.data());
+        });
+      } catch (err) {
+        console.error("❌ Firebase error:", err);
       }
     }
+    testConnection();
+  }, []);
 
+  React.useEffect(() => {
     document.addEventListener("pointermove", handleMouseTrack)
     document.addEventListener("pointerup", handleMouseRelease)
     return () => {
@@ -99,28 +142,11 @@ function App() {
   return (
     <>
       <div>
-        <Tile {...tile} onPointerDown={onPointerDown} selected={tileSelected} style={{ x: 200 }} />
+        <Tile {...tile} onPointerDown={handleMousePress} selected={tileSelected} />
       </div>
     </>
   )
 
-  React.useEffect(() => {
-    async function testConnection() {
-      try {
-        const snapshot = await getDocs(collection(db, "test"));
-        console.log(
-          "✅ Firebase connected:",
-          snapshot.empty ? "No docs found" : `${snapshot.size} docs found`
-        );
-        snapshot.forEach(doc => {
-          console.log("📄 Doc:", doc.id, doc.data());
-        });
-      } catch (err) {
-        console.error("❌ Firebase error:", err);
-      }
-    }
-    testConnection();
-  }, []);
 }
 
 export default App;
