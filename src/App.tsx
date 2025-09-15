@@ -2,22 +2,8 @@ import React from 'react'
 import './App.css'
 
 import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, deleteUser } from "firebase/auth";
 import { getFirestore, doc, collection, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
-
-const auth = getAuth();
-const db = getFirestore();
-
-async function signUp(email, password, displayName) {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  const uid = userCredential.user.uid;
-  await setDoc(doc(db, "users", uid), {
-    displayName,
-    email,
-    createdAt: serverTimestamp()
-  });
-}
-
 
 const defaultTile = {
   width: 80,
@@ -81,6 +67,9 @@ function App() {
   const [tile, setTile] = React.useState(defaultTile);
   const [pointer, setPointer] = React.useState<[number, number]>();
 
+  const auth = getAuth();
+  const db = getFirestore();
+
   const handleMousePress = (e) => {
     setTileSelected((b) => !b);
     const x = e.pageX - tile.x;
@@ -116,6 +105,15 @@ function App() {
     }
   }
   
+  async function signUp(email, password, displayName) {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const uid = userCredential.user.uid;
+    await setDoc(doc(db, "users", uid), {
+      displayName,
+      email,
+      createdAt: serverTimestamp()
+    });
+  }
   React.useEffect(() => {
     async function testConnection() {
       try {
