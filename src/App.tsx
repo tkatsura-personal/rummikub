@@ -1,10 +1,30 @@
 import React from 'react'
 import './App.css'
 
-import { db } from "./lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { getFirestore, doc, collection, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
+
+const auth = getAuth();
+const db = getFirestore();
+
+async function signUp(email, password, displayName) {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const uid = userCredential.user.uid;
+  await setDoc(doc(db, "users", uid), {
+    displayName,
+    email,
+    createdAt: serverTimestamp()
+  });
+}
+
+
+const defaultTile = {
+  width: 80,
+  height: 100,
+  x: 200,
+  y: 200
+};
 
 type TileProps = {
   width: number;
@@ -55,13 +75,6 @@ class Tile extends React.Component<
     );
   }
 }
-
-const defaultTile = {
-  width: 80,
-  height: 100,
-  x: 200,
-  y: 200
-};
 
 function App() {
   const [tileSelected, setTileSelected] = React.useState(false)
