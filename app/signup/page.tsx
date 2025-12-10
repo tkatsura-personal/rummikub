@@ -7,7 +7,7 @@ import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, delete
 import { getFirestore, doc, collection, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function signUpPage() {
-
+/*
   const auth = getAuth();
   const db = getFirestore();
 
@@ -46,5 +46,5 @@ export default function signUpPage() {
       </div>
     </>
   )
-
+*/
 }
