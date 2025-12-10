@@ -65,21 +65,21 @@ function game() {
   const [tile, setTile] = React.useState(defaultTile);
   const [pointer, setPointer] = React.useState<[number, number]>();
 
-  const handleMousePress = (e) => {
+  const handleMousePress = (e: PointerEvent) => {
     setTileSelected((b) => !b);
     const x = e.pageX - tile.x;
     const y = e.pageY - tile.y;
     setPointer([x, y]);
   };
 
-  const handleMouseTrack = (e) => {
+  const handleMouseTrack = (e: PointerEvent) => {
     const x = e.pageX;
     const y = e.pageY;
     setPointer([x, y]);
     //console.log("Pointer move:", x, y);
   }
 
-  const handleMouseRelease = (e) => {
+  const handleMouseRelease = (e: PointerEvent) => {
     if (tileSelected) {
       //Check the current tile position after the mouse is released
       console.log("check if pointer is within the page bounds");
@@ -118,11 +118,11 @@ function game() {
       setTile((t) => ({ ...t, x, y }));
     }
   }, [pointer, tileSelected]);
-
+  //{ <Tile {...tile} onPointerDown={handleMousePress} selected={tileSelected} /> }
   return (
     <>
       <div>
-        { <Tile {...tile} onPointerDown={handleMousePress} selected={tileSelected} /> }
+        
       </div>
     </>
   )
