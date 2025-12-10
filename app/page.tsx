@@ -6,7 +6,7 @@ import { StrictMode } from 'react';
 //import AuthPage from "./server/firebase/auth";
 import game from './signup/page';
 import signup from './signup/page';
-import notfound from "./notfound/page";
+import pagenotfound from "./pagenotfound/page";
 import Heading from "./Heading";
 import './globals.css';
 
