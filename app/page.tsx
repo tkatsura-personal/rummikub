@@ -7,7 +7,7 @@ import { StrictMode } from 'react';
 //<Route path="/auth" element={<AuthPage/>}/>
 import game from './game/page';
 import signup from './signup/page';
-import notfound from "./notfound/page";
+//import notfound from "./notfound/page";
 import Heading from "./Heading";
 import './globals.css';
 
