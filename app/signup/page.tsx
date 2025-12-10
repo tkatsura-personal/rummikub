@@ -1,12 +1,12 @@
+'use client';
 // React imports
 import React from 'react'
-import './signup.css'
 
 // Firebase imports
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, deleteUser } from "firebase/auth";
 import { getFirestore, doc, collection, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
 
-function signUpPage() {
+export default function signUpPage() {
 
   const auth = getAuth();
   const db = getFirestore();
@@ -48,5 +48,3 @@ function signUpPage() {
   )
 
 }
-
-export default signUpPage;
