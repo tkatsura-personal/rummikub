@@ -5,10 +5,9 @@ import { StrictMode } from 'react';
 //import { Routes, Route } from 'react-router-dom';
 //import AuthPage from "./server/firebase/auth";
 //<Route path="/auth" element={<AuthPage/>}/>
-//import game from './components/game/page';
-//import SignUpPage from './components/signup/page';
-//import StartPage from './components/page';
-//import NotFoundPage from './components/notfound/page';
+import game from './game/page';
+import signup from './signup/page';
+import notfound from "./notfound/page";
 import Heading from "./Heading";
 import './globals.css';
 
