@@ -1,16 +1,18 @@
 'use client';
 
 import { StrictMode } from 'react';
-//import { BrowserRouter as Router } from 'react-router-dom';
-//import { Routes, Route } from 'react-router-dom';
-//import AuthPage from "./server/firebase/auth";
-import game from './signup/page';
-import signup from './signup/page';
-import pagenotfound from "./pagenotfound/page";
+import { useRouter } from 'next/router';
+import signup from './client/signup';
+import pagenotfound from "./client/notfound";
+import login from './client/login';
 import Heading from "./Heading";
 import './globals.css';
 
+
+
 export default function Page() {
+  const router = useRouter()
+  
   return (
     <StrictMode>
       <div>

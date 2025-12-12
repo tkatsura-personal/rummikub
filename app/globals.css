@@ -50,3 +50,11 @@ body {
 .read-the-docs {
   color: #888;
 }
+
+.Heading {
+  size: 50px
+}
+
+.link {
+  margin-right: 10px
+}
