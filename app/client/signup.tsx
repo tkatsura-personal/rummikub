@@ -37,7 +37,7 @@ export default function signUpPage() {
       }
     }
     testConnection();
-  }, []);
+  }, []);*/
 
   return (
     <>
@@ -46,5 +46,5 @@ export default function signUpPage() {
       </div>
     </>
   )
-*/
+
 }
