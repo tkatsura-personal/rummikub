@@ -13,21 +13,21 @@ export default function Page() {
       <Heading title = {"Welcome to my Rummikub Project!"}/>
       <h1>Hello, and welcome to my board game!</h1>
       <h3>Sadly, there's nothing here yet, but it's about to be filled with a game!</h3>
-      <button type="button" className="button" onClick={() => router.push('./client/game.tsx')}>
+      <button type="button" className="button" onClick={() => router.push('/client/game')}>
         Play Game 
         <div className="arrow-wrapper">
           <div className="arrow"></div>
         </div>
       </button>
 
-      <button type="button" className="button" onClick={() => router.push('./client/login.tsx')}>
+      <button type="button" className="button" onClick={() => router.push('/client/login')}>
         Sign In
         <div className="arrow-wrapper">
           <div className="arrow"></div>
         </div>
       </button>
 
-      <button type="button" className="button" onClick={() => router.push('./client/signup.tsx')}>
+      <button type="button" className="button" onClick={() => router.push('/client/signup')}>
         Sign Up
         <div className="arrow-wrapper">
           <div className="arrow"></div>
