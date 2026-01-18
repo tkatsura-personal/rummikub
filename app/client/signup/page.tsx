@@ -21,6 +21,7 @@ const firebaseConfig = {
 
 export default function signUpPage() {
 
+  console.log(firebaseConfig.apiKey);
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
