@@ -14,6 +14,7 @@ const firebaseConfig = {
   storageBucket: process.env.CLIENT_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.CLIENT_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.CLIENT_FIREBASE_APP_ID,
+  measurementID:process.env.CLIENT_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
