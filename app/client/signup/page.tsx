@@ -4,6 +4,7 @@ import React from 'react'
 
 // Firebase imports
 import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, deleteUser } from "firebase/auth";
 import { getFirestore, doc, collection, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -17,14 +18,13 @@ const firebaseConfig = {
   measurementID:process.env.CLIENT_FIREBASE_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
-
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-
 
 export default function signUpPage() {
 
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  
   async function signUp(email: string, password: string, displayName: string) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const uid = userCredential.user.uid;
