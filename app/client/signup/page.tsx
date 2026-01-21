@@ -22,16 +22,12 @@ const firebaseConfig = {
 
 export default function signUpPage() {
 
-  console.log(firebaseConfig.apiKey);
-  console.log(firebaseConfig.authDomain);
-  console.log(firebaseConfig.projectId);
-  console.log(firebaseConfig.storageBucket);
-  console.log(firebaseConfig.messagingSenderId);
-  console.log(firebaseConfig.appId);
-  console.log(firebaseConfig.measurementId);
+  
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+
+  console.log(auth.currentUser);
   
   async function signUp(email: string, password: string, displayName: string) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
