@@ -7,6 +7,7 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, deleteUser } from "firebase/auth";
 import { getFirestore, doc, collection, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
+import firebase from 'firebase/compat/app';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_WEB_API_KEY,
@@ -22,6 +23,12 @@ const firebaseConfig = {
 export default function signUpPage() {
 
   console.log(firebaseConfig.apiKey);
+  console.log(firebaseConfig.authDomain);
+  console.log(firebaseConfig.projectId);
+  console.log(firebaseConfig.storageBucket);
+  console.log(firebaseConfig.messagingSenderId);
+  console.log(firebaseConfig.appId);
+  console.log(firebaseConfig.measurementId);
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
