@@ -1,0 +1,10 @@
+.tile {
+  width: 100px;
+  height: 100px;
+  background-color: #FFFF00;
+  position: absolute
+}
+
+.card {
+  padding: 2em;
+}

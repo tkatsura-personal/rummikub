@@ -1,66 +1,50 @@
 'use client';
 // React imports
-import React from 'react'
-
-// Firebase imports
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, deleteUser } from "firebase/auth";
-import { getFirestore, doc, collection, getDocs, setDoc, serverTimestamp } from "firebase/firestore";
-import firebase from 'firebase/compat/app';
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_WEB_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId:process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-};
-
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { createUser } from '../../server/firebase/auth';
 
 export default function signUpPage() {
 
-  
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
 
-  console.log(auth.currentUser);
-  
-  async function signUp(email: string, password: string, displayName: string) {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const uid = userCredential.user.uid;
-    await setDoc(doc(db, "users", uid), {
-      displayName,
-      email,
-      createdAt: serverTimestamp()
-    });
-  }
-  
-  React.useEffect(() => {
-    async function testConnection() {
-      try {
-        const snapshot = await getDocs(collection(db, "test"));
-        console.log(
-          "✅ Firebase connected:",
-          snapshot.empty ? "No docs found" : `${snapshot.size} docs found`
-        );
-        snapshot.forEach(doc => {
-          console.log("📄 Doc:", doc.id, doc.data());
-        });
-      } catch (err) {
-        console.error("❌ Firebase error:", err);
-      }
-    }
-    testConnection();
-  }, []);
+  const router = useRouter();
 
   return (
     <>
       <div>
-        {}
+        <input
+            type="text"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder = "Email"
+          />
+
+        <input
+          type="text"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder = "Password"
+        />
+
+        <button type="button" className="button" onClick={() => createUser(email, password)}>
+          Sign Up
+          <div className="arrow-wrapper">
+          <div className="arrow"></div>
+          </div>
+        </button>
+
+        <text onClick={() => router.push('/client/login')}>
+          Already have an account? Please log in instead.
+        </text>
+
+        <button type="button" className="button" onClick={() => router.push('/')}>
+          Back
+          <div className="arrow-wrapper">
+          <div className="arrow"></div>
+          </div>
+        </button>
       </div>
     </>
   )
