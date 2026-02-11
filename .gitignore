@@ -15,10 +15,6 @@
 /coverage
 /app/test/curl
 
-# next.js
-/.next/
-/out/
-
 # production
 /build
 
