@@ -2,7 +2,7 @@
 // React imports
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { loginUser } from '../../server/firebase/auth';
+import { loginUser, checkDBconnection } from '../../server/firebase/auth';
 
 export default function signUpPage() {
 

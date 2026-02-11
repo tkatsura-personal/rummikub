@@ -23,6 +23,17 @@ const firebaseConfig = {
 export default function game() {
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const token = await auth.currentUser.getIdToken();
+
+    fetch("/api/table", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify({ someData: 123 }),
+    });
+
 
     React.useEffect(() => {
     async function testConnection() {
