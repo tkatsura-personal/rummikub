@@ -1,6 +1,6 @@
 'use client';
 // React imports
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
 //import components
 import HandRow from "../components/HandRow";
@@ -19,42 +19,46 @@ export default function game() {
     const [errorTable, setErrorTable] = useState(null);
     const [errorHand, setErrorHand] = useState(null);
 
-    fetch("http://localhost:3000/table/game13578", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        setTable(data);
-        setLoadingTable(false);
-        console.log("Table data:", data);
-    })
-    .catch(error => {
-        setErrorTable(error);
-        setLoadingTable(false);
-        console.error("Error fetching table:", error);
-    });
+    useEffect(() => {
+        fetch("http://localhost:3000/table/game13578", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            setTable(data);
+            setLoadingTable(false);
+            console.log("Table data:", data);
+        })
+        .catch(error => {
+            setErrorTable(error);
+            setLoadingTable(false);
+            console.error("Error fetching table:", error);
+        });
+    }, []);
 
      // Grab hand of game13578 as uid123 from backend
-    fetch("http://localhost:3000/hand/game13578/uid123", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        },
-    })
-    .then(response => response.json())
-    .then(data => {
-        setHand(data);
-        setLoadingHand(false);
-        console.log("Hand data:", data);
-    })
-    .catch(error => {
-        setErrorHand(error);
-        setLoadingHand(false);
-        console.error("Error fetching table:", error);
-    });
+    useEffect(() => {
+        fetch("http://localhost:3000/hand/game13578/uid123", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            setHand(data);
+            setLoadingHand(false);
+            console.log("Hand data:", data);
+        })
+        .catch(error => {
+            setErrorHand(error);
+            setLoadingHand(false);
+            console.error("Error fetching table:", error);
+        });
+    }, []);
 
     // Make a basic react component of size 1024x768 with a message in the middle saying "The game does not exist yet, I'm sorry :("
     return (
