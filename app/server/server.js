@@ -3,7 +3,7 @@ import admin from "firebase-admin";
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import serviceAccount from './tk-rummikub-global-firebase-adminsdk-fbsvc-dc9581dd51.json' with { type: 'json' };
+import serviceAccount from './tk-rummikub-admin.json' with { type: 'json' };
 import { specs, swaggerUi } from './swagger.js';
 
 dotenv.config();
@@ -13,13 +13,7 @@ serviceAccount.private_key = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 serviceAccount.private_key_id = process.env.FIREBASE_ADMIN_PRIVATE_KEY_ID;
 serviceAccount.client_email = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
 serviceAccount.client_id = process.env.FIREBASE_ADMIN_CLIENT_ID;
-
-console.log('Service account after adding private key from .env:', {
-  private_key: serviceAccount.private_key,
-  private_key_id: serviceAccount.private_key_id,
-  client_email: serviceAccount.client_email,
-  client_id: serviceAccount.client_id
-});
+serviceAccount.client_x509_cert_url = process.env.FIREBASE_ADMIN_CLIENT_x509_CERT_URL;
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
