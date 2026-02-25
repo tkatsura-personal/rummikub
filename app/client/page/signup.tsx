@@ -1,15 +1,13 @@
 'use client';
 // React imports
 import React from 'react';
-import { useRouter } from 'next/navigation';
-import { createUser } from '../../server/firebase/auth';
 
 export default function signUpPage() {
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  const router = useRouter();
+  //const router = useRouter();
 
   return (
     <>

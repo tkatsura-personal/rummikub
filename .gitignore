@@ -14,12 +14,15 @@
 # testing
 /coverage
 /app/test/curl
+app/server/tk-rummikub-global-firebase-adminsdk-fbsvc-dc9581dd51.json
 
 # production
 /build
 
 # misc
 .DS_Store
+.vscode
+.vscode/*
 *.pem
 
 # debug
