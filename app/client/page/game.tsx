@@ -56,9 +56,6 @@ export default function game() {
         console.error("Error fetching table:", error);
     });
 
-    
-
-
     // Make a basic react component of size 1024x768 with a message in the middle saying "The game does not exist yet, I'm sorry :("
     return (
         <div>
