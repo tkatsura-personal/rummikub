@@ -6,11 +6,24 @@ import dotenv from 'dotenv';
 import serviceAccount from './tk-rummikub-global-firebase-adminsdk-fbsvc-dc9581dd51.json' with { type: 'json' };
 import { specs, swaggerUi } from './swagger.js';
 
+dotenv.config();
+
+// Read private key from .env and add into serviceAccount object (since private key contains newlines, it can't be stored directly in the JSON file)
+serviceAccount.private_key = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+serviceAccount.private_key_id = process.env.FIREBASE_ADMIN_PRIVATE_KEY_ID;
+serviceAccount.client_email = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+serviceAccount.client_id = process.env.FIREBASE_ADMIN_CLIENT_ID;
+
+console.log('Service account after adding private key from .env:', {
+  private_key: serviceAccount.private_key,
+  private_key_id: serviceAccount.private_key_id,
+  client_email: serviceAccount.client_email,
+  client_id: serviceAccount.client_id
+});
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
-
-dotenv.config();
 
 const app = express();
 app.use(cors());
@@ -246,10 +259,10 @@ app.get('/hand/:gameId/:userId', async (req, res) => {
     if (!player) {
       return res.status(404).json({ error: 'Player not found in this game' });
     }
-    res.status(201).json({ hand: player.hand }); // Send player's hand as JSON response
+    return res.status(201).json({ hand: player.hand }); // Send player's hand as JSON response
   } catch (error) {
     console.error('Error fetching hand:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
