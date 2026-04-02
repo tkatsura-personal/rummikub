@@ -192,7 +192,6 @@ app.get('/games', async (req, res) => {
 app.get('/table/:gameId', async (req, res) => {
   const { gameId } = req.params;
   try {
-    console.log('Fetching table for gameId:', gameId);
     const gameDoc = await db.collection('games').doc(gameId).get(); // Grab document by gameId
     if (!gameDoc.exists) {
       return res.status(404).json({ error: 'Game not found' });
@@ -354,7 +353,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
     const newTile = availableTiles[Math.floor(Math.random() * availableTiles.length)]; // Randomly select a tile from available tiles
 
     // Add the new tile to the player's hand
-    gameData.players[playerIndex].hand.push(newTile);
+    gameData.players[playerIndex].hand['1'].push(newTile);
 
     const currentIndex = gameData.currentTurnIndex;
     const nextIndex = (currentIndex + 1) % gameData.players.length;
@@ -454,9 +453,13 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
     
     // Split table and hand data from submitted turn
     const { table, hand } = submittedTurn;
-    //console.log('Submitted table:', table);
-    //console.log('Submitted hand:', hand);
-    const endingTiles = [...hand];
+    console.log('Submitted hand:', hand);
+    console.log('Submitted table:', table);
+    const endingTiles = [];
+    for (const group in hand) {
+      console.log(`Group ${group}:`, hand[group]);
+      endingTiles.push(...hand[group]);
+    }
     // Add tiles in each group on the table to endingTiles
     for (const group in table) {
       console.log(`Group ${group}:`, table[group]);
@@ -469,7 +472,11 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
     const currentTable = gameData.table;
     const currentHand = gameData.players[playerIndex].hand;
 
-    const startingTiles = [...currentHand];
+    const startingTiles = [];
+    for (const group in currentHand) {
+      console.log(`Group ${group}:`, currentHand[group]);
+      startingTiles.push(...currentHand[group]);
+    }
     for (const group in currentTable) {
       startingTiles.push(...currentTable[group]);
     }
@@ -494,10 +501,8 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
     // Submit hand and table data to game document, along with next player's turn index and round number
     await gameRef.update({ table: gameData.table, players: gameData.players, currentTurnIndex: nextIndex, turnNumber: gameData.turnNumber });
 
-
     // Update the game document with the new hand
-    // await game.update({ players: gameData.players });
-    
+    // await game.update({ players: gameData.players });    
     res.status(201).json({ }); // Send the new tile as JSON response
   } catch (error) {
     console.error('Error submitting turn:', error);

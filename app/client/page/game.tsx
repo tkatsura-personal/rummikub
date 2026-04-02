@@ -1,36 +1,75 @@
 'use client';
 // React imports
-import React, { useEffect } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState, CSSProperties } from "react";
 //import components
 import HandRow from "../components/HandRow";
-import TableSet from "../components/TableSet";
-import Tile from "../components/Tile";
+import TileSet, { TileSetProps } from "../components/TileSet";
+import ActionButton from "../components/Button";
+import Popup from "./popup";
 
-
-
+//css imports
+import "./game.css";
+type PopupType = "draw-card" | "no-tile-moved" | "invalid-board" | "confirm-hand" | null;
 
 export default function game() {
-    // Grab table of game13578 from backend
-    const [table, setTable] = useState([]);
-    const [hand, setHand] = useState([]);
+    const TileSetList = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
     const [loadingTable, setLoadingTable] = useState(true);
     const [loadingHand, setLoadingHand] = useState(true);
     const [errorTable, setErrorTable] = useState(null);
     const [errorHand, setErrorHand] = useState(null);
+    
+    const [table, setTable] = useState<Record<string,string[]>>({});
+    const [hand, setHand] = useState<Record<string,string[]>>({});
+    const [isValidSet, setTileValid] = useState<Record<string, boolean>>({});
+    const [hasHandTile, setHasHandTile] = useState<Record<string, boolean>>(
+        Object.fromEntries(TileSetList.map((tileSetNum) => [tileSetNum, false]))
+    );
+    const validDropRef = useRef<boolean>(false);
+    const [activePopup, setActivePopup] = useState<PopupType>(null);
 
+    const handleBoardTileChange = (setId: string, tileList: string[], hasHandTile: boolean, isValid: boolean) => {
+        setTable(prev => ({...prev, [setId]: tileList}));
+        setHasHandTile(prev => ({ ...prev, [setId]: hasHandTile }));
+        setTileValid(prev => ({ ...prev, [setId]: isValid }));
+    };
+
+    const handleHandTileChange = (setId: string, tileList: string[]) => {
+        setHand(prev => ({...prev, [setId]: tileList}));
+    };
+
+    const containerStyleTileSet: CSSProperties = {
+        overflowY: 'scroll',
+        position: 'relative',
+        border: '1px solid black',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexWrap: 'wrap',
+        flexDirection: 'row',
+        width: '100%',
+        height: '50%',
+    }
+
+    const containerStyle: CSSProperties = {
+        position: 'relative',
+        border: '1px solid black',
+        display: 'flex',
+        flexWrap: 'wrap',
+        width: '80%',
+        height: '45%',
+    }
+
+    // Grab table of game13578 from backend
     useEffect(() => {
         fetch("http://localhost:3000/table/game13578", {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-            },
+            }
         })
         .then(response => response.json())
         .then(data => {
             setTable(data);
             setLoadingTable(false);
-            console.log("Table data:", data);
         })
         .catch(error => {
             setErrorTable(error);
@@ -45,13 +84,12 @@ export default function game() {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-            },
+            }
         })
         .then(response => response.json())
         .then(data => {
-            setHand(data);
+            setHand(data.hand);
             setLoadingHand(false);
-            console.log("Hand data:", data);
         })
         .catch(error => {
             setErrorHand(error);
@@ -59,15 +97,114 @@ export default function game() {
             console.error("Error fetching table:", error);
         });
     }, []);
+    
+    const handleSubmit = () => {
+        closePopup();
+        // Check if all sets are valid
+        const allValid = Object.values(isValidSet).every(v => v);
+        const oneHasHand = Object.values(hasHandTile).some(v => v);
+        const body = JSON.stringify({table: table, hand: hand});
+        if (allValid && oneHasHand) {
+            fetch("http://localhost:3000/hand/game13578/uid123", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: body
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Turn submitted");
+            })
+            .catch(error => {
+                console.error(error);
+            });
+        } else if (allValid) {
+            setActivePopup("no-tile-moved");
+        } else {
+            setActivePopup("invalid-board");
+        };
+    };
+
+    const drawHand = async () => {
+        closePopup();
+        await fetch("http://localhost:3000/hand/game13578/uid123", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            console.log("Turn submitted");
+        })
+        .catch(error => {
+            console.error(error);
+        });
+        
+    }
+    
+    const closePopup = () => setActivePopup(null);
 
     // Make a basic react component of size 1024x768 with a message in the middle saying "The game does not exist yet, I'm sorry :("
     return (
         <div>
-            <h3>The game does not exist yet, I'm sorry :&#40;</h3>
-            {loadingTable ? "Loading..." : JSON.stringify(table)}
-            {errorTable && <p>Error: {errorTable.message}</p>}
-            {loadingHand ? "Loading..." : JSON.stringify(hand)}
-            {errorHand && <p>Error: {errorHand.message}</p>}
+            <div className = "game-container">
+                {loadingTable ? errorTable ? "Internal Server Error" : "Loading Table..." : 
+                    <div style = {containerStyleTileSet}>
+                        {TileSetList.map((tileSetNum) => (
+                            <TileSet key={tileSetNum} id={tileSetNum} Tiles={table[tileSetNum]} validDropRef={validDropRef} 
+                            onTileChange={handleBoardTileChange} />
+                        ))}
+                    </div>}
+                {loadingHand ? errorHand ? errorTable ? "" : "Internal Server Error" : "Loading Hand..." : 
+                    <div style = {containerStyle}>
+                        <HandRow key={'1'} id={'1'} HandRow={hand['1']} validDropRef={validDropRef}
+                        onTileChange={handleHandTileChange} />
+                        <HandRow key={'2'} id={'2'} HandRow={hand['2']} validDropRef={validDropRef}
+                        onTileChange={handleHandTileChange} />
+                        <HandRow key={'3'} id={'3'} HandRow={hand['3']} validDropRef={validDropRef}
+                        onTileChange={handleHandTileChange} />
+                    </div>
+                }
+                
+                <ActionButton label="Give Up & Draw" onClick={() => setActivePopup("draw-card")} />
+                <ActionButton label="Submit Turn" onClick={() => setActivePopup("confirm-hand")} />
+
+                {activePopup === "draw-card" && (
+                <Popup
+                        message="Are you sure you want to draw a card?"
+                        onConfirm={drawHand}
+                        onCancel={closePopup}
+                    />
+                )}
+
+                {activePopup === "no-tile-moved" && (
+                    <Popup
+                        message="You haven't moved any tiles!"
+                        onConfirm={closePopup}
+                        onCancel={closePopup}
+                    />
+                )}
+
+                {activePopup === "invalid-board" && (
+                    <Popup
+                        message="One of the sets on board is incomplete!"
+                        onConfirm={closePopup}
+                        onCancel={closePopup}
+                    />
+                )}
+
+                {activePopup === "confirm-hand" && (
+                    <Popup
+                        message="Confirm hand?"
+                        onConfirm={handleSubmit}
+                        onCancel={closePopup}
+                    />
+                )}
+            </div>
         </div>
     );
 };
