@@ -1,22 +1,24 @@
 import Game from "./page/game";
 import Lobby from "./page/lobby";
 import Users from "./page/pickuser";
+import Notfound from "./page/notfound";
+import Login from "./page/login";
+import Signup from "./page/signup";
+import Resetpass from "./page/resetpass";
+import { Routes, Route } from "react-router-dom";
 
 
 export default function App() {
-    /*
-    Navigation: starting page is user selecting
-    after selecting user, put it in url param, then 
-    session storage reads the value to be kept throughout the entire tab
-
-    game ID will be kept specifically within URL param, since it changes as soon as you leave the game page.
-
-    keep track of the actual move set (K7 from set 1 to set 4, O8 from set 3 to set 9, etc)
-    */
-    
     return (
-        <div>
-            <Users />
-        </div>
-    );
+        <Routes>
+            <Route path = "/" element = {<Users/>}/>
+            <Route path = "/lobby/:userId" element = {<Lobby/>}/>
+            <Route path = "/game/:gameId/:userId" element = {<Game/>}/>
+            <Route path = "/login" element = {<Login/>}/>
+            <Route path = "/signup" element = {<Signup/>}/>
+            <Route path = "/resetpass" element = {<Resetpass/>}/>
+            <Route path = "/notfound" element = {<Notfound/>}/>
+            <Route path = "*" element = {<Notfound/>}/>
+        </Routes>
+    )
 }

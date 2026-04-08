@@ -31,9 +31,7 @@ export default function Users() {
         });
     }, []);
 
-    const toLobby = () =>{
-        navigate('/lobby/${uid}');
-    }
+    const toLobby = () => navigate(`/lobby/${selectedUser}`);
 
     return (
         <div>
@@ -41,13 +39,11 @@ export default function Users() {
                 <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)}>
                     <option value="null">Select User</option>
                     {users.map((user) => (
-                        <option key={user.id} value={user.username}>{user.username}</option>
+                        <option key={user.id} value={user.id}>{user.username}</option>
                     ))}
                 </select>
             }
-            <Router>
-                <ActionButton label="Select" onClick={() => toLobby()} />
-            </Router>
+            <ActionButton label="Select" onClick={() => toLobby()} />
         </div>
     )
-} 
+}

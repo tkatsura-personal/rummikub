@@ -1,9 +1,10 @@
 'use client';
 // React imports
 import { useEffect, useRef, useState, CSSProperties } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 //import components
 import HandRow from "../components/HandRow";
-import TileSet, { TileSetProps } from "../components/TileSet";
+import TileSet from "../components/TileSet";
 import ActionButton from "../components/Button";
 import Popup from "./popup";
 
@@ -12,6 +13,7 @@ import "./game.css";
 type PopupType = "draw-card" | "no-tile-moved" | "invalid-board" | "confirm-hand" | null;
 
 export default function game() {
+    const { gameId, userId } = useParams();
     const TileSetList = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
     const [loadingTable, setLoadingTable] = useState(true);
     const [loadingHand, setLoadingHand] = useState(true);
@@ -60,7 +62,7 @@ export default function game() {
 
     // Grab table of game13578 from backend
     useEffect(() => {
-        fetch("http://localhost:3000/table/game13578", {
+        fetch(`http://localhost:3000/table/${gameId}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -80,7 +82,7 @@ export default function game() {
 
      // Grab hand of game13578 as uid123 from backend
     useEffect(() => {
-        fetch("http://localhost:3000/hand/game13578/uid123", {
+        fetch(`http://localhost:3000/hand/${gameId}/${userId}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -105,7 +107,7 @@ export default function game() {
         const oneHasHand = Object.values(hasHandTile).some(v => v);
         const body = JSON.stringify({table: table, hand: hand});
         if (allValid && oneHasHand) {
-            fetch("http://localhost:3000/hand/game13578/uid123", {
+            fetch(`http://localhost:3000/hand/${gameId}/${userId}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -124,11 +126,12 @@ export default function game() {
         } else {
             setActivePopup("invalid-board");
         };
+
     };
 
     const drawHand = async () => {
         closePopup();
-        await fetch("http://localhost:3000/hand/game13578/uid123", {
+        await fetch(`http://localhost:3000/hand/${gameId}/${userId}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
