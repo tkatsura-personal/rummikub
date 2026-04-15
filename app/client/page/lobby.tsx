@@ -1,7 +1,7 @@
 import { useEffect, useState, CSSProperties } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
-const backendLink = process.env.VITE_BACKEND;
+const backendLink = import.meta.env.VITE_BACKEND;
 
 export default function Lobby() {
     const { userId } = useParams();

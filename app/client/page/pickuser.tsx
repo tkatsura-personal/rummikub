@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, CSSProperties } from "react";
 import ActionButton from "../components/Button";
 import { useNavigate } from "react-router-dom";
 
-const backendLink = process.env.VITE_BACKEND;
+const backendLink = import.meta.env.VITE_BACKEND;
 
 interface user {
     id: string;
@@ -25,6 +25,7 @@ export default function Users() {
         })
         .then(response => response.json())
         .then(data => {
+            console.log(data);
             setUsers(data);
             setLoadingUsers(false);
         })

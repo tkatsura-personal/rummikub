@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { linkWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, } from 'firebase/auth';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
@@ -20,11 +20,13 @@ export default function AuthForm() {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
 
-  const handleUserAuthentication = (email: string, password: string) => {
+  const handleUserAuthentication = async (email: string, password: string) => {
     if (action == 'sign-in') {
-      signInWithEmailAndPassword(auth, email, password)
+      const changeName = await signInWithEmailAndPassword(auth, email, password);
+      console.log(changeName);
     } else {
-
+      const paint = await createUserWithEmailAndPassword(auth, email, password);
+      console.log(paint);
     }
   }
 
@@ -36,6 +38,7 @@ export default function AuthForm() {
         const token = credential.accessToken;
         // The signed-in user info.
         const user = result.user;
+        router(`/lobby/${user.uid}`);
         // IdP data available using getAdditionalUserInfo(result)
         // ...
       }).catch((error) => {
@@ -46,9 +49,15 @@ export default function AuthForm() {
         const email = error.customData.email;
         // The AuthCredential type that was used.
         const credential = GoogleAuthProvider.credentialFromError(error);
+        console.log(errorCode, errorMessage);
       }
     );
   }
+
+  useEffect(() => {
+    setEmail('');
+    setPassword('');
+  }, [action]);
 
   return (
     <div>
@@ -61,7 +70,7 @@ export default function AuthForm() {
       />
 
       <input
-        type={isVisible? 'text': 'password'}
+        type={isVisible? 'Text': 'Password'}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder = "Password"

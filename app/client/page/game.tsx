@@ -8,7 +8,7 @@ import TileSet from "../components/TileSet";
 import ActionButton from "../components/Button";
 import Popup from "./popup";
 
-const backendLink = process.env.VITE_BACKEND;
+const backendLink = import.meta.env.VITE_BACKEND;
 
 //css imports
 import "./game.css";
