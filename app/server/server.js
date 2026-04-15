@@ -346,6 +346,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
       }
     }
     
+    console.log(availableTiles);
     if (availableTiles.length === 0) {
       return res.status(400).json({ error: 'No more tiles available' });
     }

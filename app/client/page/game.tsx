@@ -10,7 +10,7 @@ import Popup from "./popup";
 
 //css imports
 import "./game.css";
-type PopupType = "draw-card" | "no-tile-moved" | "invalid-board" | "confirm-hand" | null;
+type PopupType = "draw-card" | "no-tile-moved" | "invalid-board" | "confirm-hand" | "not-your-turn" | "turn-successful" | "no-more-tiles" | null;
 
 export default function game() {
     const { gameId, userId } = useParams();
@@ -114,7 +114,17 @@ export default function game() {
                 },
                 body: body
             })
-            .then(response => response.json())
+            .then(response => {
+                if (response.status === 201) {
+                    setActivePopup("turn-successful");
+                } else if (response.status === 403) {
+                    setActivePopup("not-your-turn");
+                } else if (response.status === 400) {
+                    setActivePopup("no-more-tiles");
+                } else if (!response.ok) {
+                    alert(`Something went wrong! Error: ${response.status}`)
+                }
+                return response.json()})
             .then(data => {
                 console.log("Turn submitted");
             })
@@ -131,14 +141,23 @@ export default function game() {
 
     const drawHand = async () => {
         closePopup();
-        await fetch(`http://localhost:3000/hand/${gameId}/${userId}`, {
+        await fetch(`http://localhost:3000/tile/${gameId}/${userId}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
-
         })
-        .then(response => response.json())
+        .then(response => {
+                if (response.status === 201) {
+                    setActivePopup("turn-successful");
+                } else if (response.status === 403) {
+                    setActivePopup("not-your-turn");
+                } else if (response.status === 400) {
+                    setActivePopup("no-more-tiles");
+                } else if (!response.ok) {
+                    alert(`Something went wrong! Error: ${response.status}`)
+                }
+                return response.json()})
         .then(data => {
             console.log(data);
             console.log("Turn submitted");
@@ -177,7 +196,7 @@ export default function game() {
                 <ActionButton label="Submit Turn" onClick={() => setActivePopup("confirm-hand")} />
 
                 {activePopup === "draw-card" && (
-                <Popup
+                    <Popup
                         message="Are you sure you want to draw a card?"
                         onConfirm={drawHand}
                         onCancel={closePopup}
@@ -204,6 +223,30 @@ export default function game() {
                     <Popup
                         message="Confirm hand?"
                         onConfirm={handleSubmit}
+                        onCancel={closePopup}
+                    />
+                )}
+
+                {activePopup === "not-your-turn" && (
+                    <Popup
+                        message="It is not your turn!"
+                        onConfirm={closePopup}
+                        onCancel={closePopup}
+                    />
+                )}
+
+                {activePopup === "turn-successful" && (
+                    <Popup
+                        message="Turn successfully finished!"
+                        onConfirm={closePopup}
+                        onCancel={closePopup}
+                    />
+                )}
+
+                {activePopup === "no-more-tiles" && (
+                    <Popup
+                        message="There are no more tiles in the pile!"
+                        onConfirm={closePopup}
                         onCancel={closePopup}
                     />
                 )}
