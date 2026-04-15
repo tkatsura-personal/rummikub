@@ -1,6 +1,8 @@
 import { useEffect, useState, CSSProperties } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+const backendLink = process.env.VITE_BACKEND;
+
 export default function Lobby() {
     const { userId } = useParams();
     const [lobbyData, setLobbyData] = useState(null);
@@ -19,7 +21,7 @@ export default function Lobby() {
     useEffect(() => {
         const fetchLobby = async () => {
         try {
-            const response = await fetch(`http://localhost:3000/games`);
+            const response = await fetch(`${backendLink}/games`);
             const data = await response.json();
             setLobbyData(data);
         } catch (error) {

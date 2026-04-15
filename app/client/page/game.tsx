@@ -8,6 +8,8 @@ import TileSet from "../components/TileSet";
 import ActionButton from "../components/Button";
 import Popup from "./popup";
 
+const backendLink = process.env.VITE_BACKEND;
+
 //css imports
 import "./game.css";
 type PopupType = "draw-card" | "no-tile-moved" | "invalid-board" | "confirm-hand" | "not-your-turn" | "turn-successful" | "no-more-tiles" | null;
@@ -62,7 +64,7 @@ export default function game() {
 
     // Grab table of game13578 from backend
     useEffect(() => {
-        fetch(`http://localhost:3000/table/${gameId}`, {
+        fetch(`${backendLink}/table/${gameId}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -82,7 +84,7 @@ export default function game() {
 
      // Grab hand of game13578 as uid123 from backend
     useEffect(() => {
-        fetch(`http://localhost:3000/hand/${gameId}/${userId}`, {
+        fetch(`${backendLink}/hand/${gameId}/${userId}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -107,7 +109,7 @@ export default function game() {
         const oneHasHand = Object.values(hasHandTile).some(v => v);
         const body = JSON.stringify({table: table, hand: hand});
         if (allValid && oneHasHand) {
-            fetch(`http://localhost:3000/hand/${gameId}/${userId}`, {
+            fetch(`${backendLink}/hand/${gameId}/${userId}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -141,7 +143,7 @@ export default function game() {
 
     const drawHand = async () => {
         closePopup();
-        await fetch(`http://localhost:3000/tile/${gameId}/${userId}`, {
+        await fetch(`${backendLink}/tile/${gameId}/${userId}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

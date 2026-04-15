@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState, CSSProperties } from "react";
 import ActionButton from "../components/Button";
 import { useNavigate } from "react-router-dom";
 
+const backendLink = process.env.VITE_BACKEND;
+
 interface user {
     id: string;
     username: string;
@@ -15,7 +17,7 @@ export default function Users() {
     const [users, setUsers] = useState<user[]>([]);
     const [selectedUser, setSelectedUser] = useState<string>();
     useEffect(() => {
-        fetch("http://localhost:3000/users", {
+        fetch("${backendLink}/users", {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
