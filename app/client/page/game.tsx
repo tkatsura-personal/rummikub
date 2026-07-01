@@ -6,17 +6,21 @@ import { useParams, useNavigate } from "react-router-dom";
 import HandRow from "../components/HandRow";
 import TileSet from "../components/TileSet";
 import ActionButton from "../components/Button";
-import Popup from "./popup";
+import Popup from "../components/popup";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import firebaseConfig from "../firebase";
 
 const backendLink = import.meta.env.VITE_BACKEND;
 
 //css imports
 import "./game.css";
+import firebase from "firebase/compat/app";
 type PopupType = "draw-card" | "no-tile-moved" | "invalid-board" | "confirm-hand" | "not-your-turn" | "turn-successful" | "no-more-tiles" | null;
 
 export default function game() {
-    const { gameId, userId } = useParams();
-    const TileSetList = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15'];
+    const { gameId } = useParams();
+    const TileSetList = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16'];
     const [loadingTable, setLoadingTable] = useState(true);
     const [loadingHand, setLoadingHand] = useState(true);
     const [errorTable, setErrorTable] = useState(null);
@@ -30,6 +34,9 @@ export default function game() {
     );
     const validDropRef = useRef<boolean>(false);
     const [activePopup, setActivePopup] = useState<PopupType>(null);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const user = auth.currentUser;
 
     const handleBoardTileChange = (setId: string, tileList: string[], hasHandTile: boolean, isValid: boolean) => {
         setTable(prev => ({...prev, [setId]: tileList}));
@@ -77,14 +84,13 @@ export default function game() {
         })
         .catch(error => {
             setErrorTable(error);
-            setLoadingTable(false);
             console.error("Error fetching table:", error);
         });
     }, []);
 
      // Grab hand of game13578 as uid123 from backend
     useEffect(() => {
-        fetch(`${backendLink}/hand/${gameId}/${userId}`, {
+        fetch(`${backendLink}/hand/${gameId}/${user.uid}`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -92,12 +98,15 @@ export default function game() {
         })
         .then(response => response.json())
         .then(data => {
+            if (data.error) {
+                Error("Player Not in Game");
+                return;
+            }
             setHand(data.hand);
             setLoadingHand(false);
         })
         .catch(error => {
             setErrorHand(error);
-            setLoadingHand(false);
             console.error("Error fetching table:", error);
         });
     }, []);
@@ -109,7 +118,7 @@ export default function game() {
         const oneHasHand = Object.values(hasHandTile).some(v => v);
         const body = JSON.stringify({table: table, hand: hand});
         if (allValid && oneHasHand) {
-            fetch(`${backendLink}/hand/${gameId}/${userId}`, {
+            fetch(`${backendLink}/hand/${gameId}/${user.uid}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -143,7 +152,7 @@ export default function game() {
 
     const drawHand = async () => {
         closePopup();
-        await fetch(`${backendLink}/tile/${gameId}/${userId}`, {
+        await fetch(`${backendLink}/tile/${gameId}/${user.uid}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -172,7 +181,6 @@ export default function game() {
     
     const closePopup = () => setActivePopup(null);
 
-    // Make a basic react component of size 1024x768 with a message in the middle saying "The game does not exist yet, I'm sorry :("
     return (
         <div>
             <div className = "game-container">

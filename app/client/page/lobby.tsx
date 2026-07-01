@@ -1,16 +1,21 @@
 import { useEffect, useState, CSSProperties } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import firebaseConfig from "../firebase";
 
 const backendLink = import.meta.env.VITE_BACKEND;
 
 export default function Lobby() {
-    const { userId } = useParams();
     const [lobbyData, setLobbyData] = useState(null);
     const navigate = useNavigate();
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const user = auth.currentUser;
 
     const lobbyCSS : CSSProperties = {
-        background: "var(--color-background-primary)",
-        border: "0.5px solid var(--color-border-tertiary)",
+        background: "#009933",
+        border: "0.5px solid #000000",
         borderRadius: "var(--border-radius-lg)",
         padding: "1rem 1.25rem",
         marginBottom: "1rem",
@@ -29,12 +34,8 @@ export default function Lobby() {
         }
         };
 
-        if (userId) fetchLobby();
-    }, [userId]);
-
-    useEffect(() => {
-        console.log(lobbyData);
-    }, [lobbyData]);
+        if (user.uid) fetchLobby();
+    }, [user.uid]);
 
     const formatDate = (timestamp) => {
         return new Date(timestamp._seconds * 1000).toLocaleDateString();
@@ -46,7 +47,7 @@ export default function Lobby() {
         {lobbyData != null ? lobbyData.map((game) => (
             <div
             key={game.id}
-            onClick={() => navigate(`/game/${game.id}/${userId}`)}
+            onClick={() => navigate(`/game/${game.id}`)}
             style={lobbyCSS}
             onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--color-border-primary)"}
             onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--color-border-tertiary)"}

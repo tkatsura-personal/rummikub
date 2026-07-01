@@ -1,7 +1,7 @@
 'use client';
-import React, { useEffect } from 'react';
+import React, { CSSProperties, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { linkWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, } from 'firebase/auth';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 import firebaseConfig from "../firebase";
@@ -22,12 +22,30 @@ export default function AuthForm() {
 
   const handleUserAuthentication = async (email: string, password: string) => {
     if (action == 'sign-in') {
-      const changeName = await signInWithEmailAndPassword(auth, email, password);
-      console.log(changeName);
+      const signInUser = await signInWithEmailAndPassword(auth, email, password);
+      router(`/lobby`);
     } else {
-      const paint = await createUserWithEmailAndPassword(auth, email, password);
-      console.log(paint);
+      const signUp = await createUserWithEmailAndPassword(auth, email, password);
+      router(`/lobby`);
     }
+  }
+
+  const containerStyle: CSSProperties = {
+    background: '#f5f0e8',
+    border: '1px solid rgba(212, 196, 160, 0.2)',
+    borderRadius: '12px',
+    padding: '40px 36px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '16px',
+    boxShadow:
+      '0 0 0 1px rgba(232, 160, 32, 0.08), 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.05)',
+    width: '100%',
+    height: '100vh',
+    maxHeight: '450px',
+    maxWidth: '400px',
+    position: 'relative',
   }
 
   const handleGoogleAuth = () => {
@@ -35,10 +53,10 @@ export default function AuthForm() {
       .then((result) => {
         // This gives you a Google Access Token. You can use it to access the Google API.
         const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential.accessToken;
+        const token = credential?.accessToken;
         // The signed-in user info.
         const user = result.user;
-        router(`/lobby/${user.uid}`);
+        router(`/lobby`);
         // IdP data available using getAdditionalUserInfo(result)
         // ...
       }).catch((error) => {
@@ -60,7 +78,7 @@ export default function AuthForm() {
   }, [action]);
 
   return (
-    <div>
+    <div style = {containerStyle}>
       <h1> { action == 'sign-in'? 'Sign In' : 'Sign Up' } </h1>
       <input
         type="text"
@@ -94,7 +112,7 @@ export default function AuthForm() {
       </button>
       
       { action == 'sign-in'? 
-        <button type="button" className="button" onClick={() => router('/client/resetpass')}>
+        <button type="button" className="button" onClick={() => router('/resetpass')}>
             Forgot Password?
             <div className="arrow-wrapper">
             <div className="arrow"></div>

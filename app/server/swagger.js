@@ -5,9 +5,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Your API Name',
+      title: 'Rummikub API',
       version: '1.0.0',
-      description: 'API documentation for your project',
+      description: 'REST API for the Rummikub multiplayer game server (users, games, hand, table, and tile endpoints).',
     },
     servers: [
       {

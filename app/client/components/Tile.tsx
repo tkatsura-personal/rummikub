@@ -13,13 +13,13 @@ export default function Tile({ id, numCol, onChildRemove, onBoard }: TileProps) 
   const [isDragging, setIsDragging] = useState(false);
   const startBoard = onBoard;
   const color = numCol.length > 1? numCol[0] : "K";
-  const number = numCol.length > 1? numCol.slice(1) : '\u{263A}';
+  const number = numCol.slice(1) != "0"? numCol.slice(1) : '\u{263A}';
 
   const colorDictionary: Record<string, string> = { 
     'K': 'black', 
     'U': 'blue', 
     'R': 'red', 
-    'O': 'orange' 
+    'O': 'orange'
   };
 
   const handleDragStart = (e: React.DragEvent) => {

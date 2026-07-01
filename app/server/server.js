@@ -13,6 +13,7 @@ serviceAccount.private_key = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 serviceAccount.private_key_id = process.env.FIREBASE_ADMIN_PRIVATE_KEY_ID;
 serviceAccount.client_email = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
 serviceAccount.client_id = process.env.FIREBASE_ADMIN_CLIENT_ID;
+serviceAccount.client_x509_cert_url = process.env.FIREBASE_ADMIN_CLIENT_x509_CERT_URL;
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -322,7 +323,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
     const numbers = Array.from({ length: 13 }, (_, i) => i + 1);
     const setTiles = colors.flatMap(color => numbers.map(num => `${color}${num}`));
     // Add jokers if needed (for example, two jokers)
-    setTiles.push('J');
+    setTiles.push('J0');
     const allTiles = [...setTiles, ...setTiles]; // Two sets of tiles
     
     // Grab all tiles currently in players' hands and on the table to determine which tiles are still available
@@ -345,8 +346,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
         availableTiles.push(tile);
       }
     }
-    
-    console.log(availableTiles);
+
     if (availableTiles.length === 0) {
       return res.status(400).json({ error: 'No more tiles available' });
     }
@@ -354,6 +354,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
     const newTile = availableTiles[Math.floor(Math.random() * availableTiles.length)]; // Randomly select a tile from available tiles
 
     // Add the new tile to the player's hand
+    gameData.players[playerIndex].hand = ensureValidHand(gameData.players[playerIndex].hand);
     gameData.players[playerIndex].hand['1'].push(newTile);
 
     const currentIndex = gameData.currentTurnIndex;
@@ -388,6 +389,50 @@ function equalLists(list1, list2) {
   }
 
   return true;
+}
+
+// Ensure a player's hand object has all three group arrays ('1','2','3'); repairs and logs
+// if the stored/submitted hand is missing or malformed, rather than crashing downstream.
+function ensureValidHand(hand) {
+  const isPlainObject = hand && typeof hand === 'object' && !Array.isArray(hand);
+  const normalized = isPlainObject ? hand : {};
+  if (!isPlainObject) {
+    console.warn('ensureValidHand: hand was missing/malformed, resetting to empty groups', hand);
+  }
+  for (const key of ['1', '2', '3']) {
+    if (!Array.isArray(normalized[key])) {
+      console.warn(`ensureValidHand: hand['${key}'] was missing/malformed, resetting to []`);
+      normalized[key] = [];
+    }
+  }
+  return normalized;
+}
+
+// Validate that a table group is a structurally legal Rummikub set: either a group of 3-4
+// same-number tiles with all-different colors, or a run of 3+ consecutive same-color numbers.
+// Sorts a copy of the tiles by number first so submitted order from the client cannot be used
+// to evade or corrupt the check (ported from app/client/components/TileSet.tsx's checkSet).
+function checkSet(tiles) {
+  if (tiles.length === 0) return true;
+  if (tiles.length < 3) return false;
+  const getColor = (t) => t[0];
+  const getNumber = (t) => parseInt(t.slice(1));
+  const sorted = [...tiles].sort((a, b) => getNumber(a) - getNumber(b));
+  const numbers = sorted.map(getNumber);
+  const colors = sorted.map(getColor);
+  const uniqueNumbers = new Set(numbers);
+  if (uniqueNumbers.size === 1) {
+    // group: same number on every tile, all colors must be distinct
+    return new Set(colors).size === sorted.length;
+  }
+  if (new Set(colors).size === 1) {
+    // run: same color on every tile, numbers must be consecutive ascending (already sorted)
+    for (let i = 1; i < numbers.length; i++) {
+      if (numbers[i] !== numbers[i - 1] + 1) return false;
+    }
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -454,38 +499,38 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
     
     // Split table and hand data from submitted turn
     const { table, hand } = submittedTurn;
-    console.log('Submitted hand:', hand);
-    console.log('Submitted table:', table);
     const endingTiles = [];
     for (const group in hand) {
-      console.log(`Group ${group}:`, hand[group]);
       endingTiles.push(...hand[group]);
     }
     // Add tiles in each group on the table to endingTiles
     for (const group in table) {
-      console.log(`Group ${group}:`, table[group]);
       endingTiles.push(...table[group]);
     }
-    console.log('Ending tiles after submitting turn:', endingTiles);
 
 
     // Read current table and hand data from game document
     const currentTable = gameData.table;
-    const currentHand = gameData.players[playerIndex].hand;
+    const currentHand = ensureValidHand(gameData.players[playerIndex].hand);
 
     const startingTiles = [];
     for (const group in currentHand) {
-      console.log(`Group ${group}:`, currentHand[group]);
       startingTiles.push(...currentHand[group]);
     }
     for (const group in currentTable) {
       startingTiles.push(...currentTable[group]);
     }
-    console.log('Starting tiles before submitting turn:', startingTiles);
 
     // Check if the submitted turn is valid by comparing the starting tiles and ending tiles
     if (!equalLists(startingTiles, endingTiles)) {
       return res.status(400).json({ error: 'Invalid turn: Tiles do not match starting hand and table' });
+    }
+
+    // Check that every non-empty group placed on the table is a structurally legal set/run
+    for (const group in table) {
+      if (table[group].length > 0 && !checkSet(table[group])) {
+        return res.status(400).json({ error: 'Invalid turn: table contains an invalid set', group });
+      }
     }
 
     // If the turn is valid, update the game document with the new hand and table data

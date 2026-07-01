@@ -10,9 +10,9 @@ import { Routes, Route } from "react-router-dom";
 export default function App() {
     return (
         <Routes>
-            <Route path = "/" element = {<Users/>}/>
-            <Route path = "/lobby/:userId" element = {<Lobby/>}/>
-            <Route path = "/game/:gameId/:userId" element = {<Game/>}/>
+            <Route path = "/" element = {<AuthForm/>}/>
+            <Route path = "/lobby" element = {<Lobby/>}/>
+            <Route path = "/game/:gameId" element = {<Game/>}/>
             <Route path = "/authuser" element = {<AuthForm/>}/>
             <Route path = "/resetpass" element = {<Resetpass/>}/>
             <Route path = "/notfound" element = {<Notfound/>}/>

@@ -1,10 +1,18 @@
 'use client';
 // React imports
 import React from 'react';
+import { useNavigate } from "react-router-dom";
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth } from "firebase/auth";
+import { initializeApp } from "firebase/app";
+import firebaseConfig from "../firebase";
 
-export default function signUpPage() {
-/*
+export default function ResetPasswordPage() {
   const [email, setEmail] = React.useState('');
+  const router = useNavigate();
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
 
   return (
     <>
@@ -23,7 +31,7 @@ export default function signUpPage() {
             </div>
         </button>
 
-        <button type="button" className="button" onClick={() => router.push('/')}>
+        <button type="button" className="button" onClick={() => router('/')}>
             Back
             <div className="arrow-wrapper">
             <div className="arrow"></div>
@@ -32,6 +40,4 @@ export default function signUpPage() {
       </div>
     </>
   )
-*/
-  return (<div></div>)
 }
