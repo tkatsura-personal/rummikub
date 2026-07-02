@@ -25,6 +25,25 @@ app.use(express.json());
 
 const db = admin.firestore();
 
+// Build the full 106-tile Rummikub pool: colors R/O/U/K x numbers 1-13, doubled, plus two jokers (J0)
+function buildFullTileSet() {
+  const colors = ['R', 'O', 'U', 'K'];
+  const numbers = Array.from({ length: 13 }, (_, i) => i + 1);
+  const setTiles = colors.flatMap(color => numbers.map(num => `${color}${num}`));
+  setTiles.push('J0');
+  return [...setTiles, ...setTiles];
+}
+
+// Fisher-Yates shuffle of a copy of the given array
+function shuffle(list) {
+  const shuffled = [...list];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
@@ -154,6 +173,178 @@ app.get('/games', async (req, res) => {
     res.status(201).json(games); // Send as JSON response
   } catch (error) {
     console.error('Error fetching games:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/**
+ * @swagger
+ * /games:
+ *    post:
+ *      summary: Create a new game
+ *      description: Create a new game with the given player limit; the creator is automatically added as the first player
+ *      tags: [Games]
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                uid:
+ *                  type: string
+ *                  example: uid000
+ *                playerCount:
+ *                  type: integer
+ *                  example: 3
+ *      responses:
+ *        '400':
+ *          description: Missing uid, or playerCount not an integer between 2 and 4
+ *        '500':
+ *          description: Internal Server Error
+ *        '201':
+ *          description: The newly created game's ID
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  id:
+ *                    type: string
+ *                    example: game13579
+ */
+app.post('/games', async (req, res) => {
+  const { uid, playerCount } = req.body;
+  if (typeof uid !== 'string' || !uid) {
+    return res.status(400).json({ error: 'Missing uid' });
+  }
+  if (!Number.isInteger(playerCount) || playerCount < 2 || playerCount > 4) {
+    return res.status(400).json({ error: 'playerCount must be between 2 and 4' });
+  }
+  try {
+    const newGameDoc = {
+      active: 0,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      currentTurnIndex: 0,
+      turnNumber: 0,
+      winner: null,
+      playerCount,
+      players: [{ uid, hand: { '1': [], '2': [], '3': [] } }],
+      table: {},
+    };
+    const gameRef = await db.collection('games').add(newGameDoc);
+    res.status(201).json({ id: gameRef.id });
+  } catch (error) {
+    console.error('Error creating game:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+/**
+ * @swagger
+ * /games/{gameId}/join:
+ *    post:
+ *      summary: Join a game
+ *      description: Join an existing joinable game; if this join fills the game to its player limit, tiles are dealt and the game becomes active
+ *      tags: [Games]
+ *      parameters:
+ *        - in: path
+ *          name: gameId
+ *          required: true
+ *          schema:
+ *            type: string
+ *          description: The ID of the game to join
+ *      requestBody:
+ *        required: true
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                uid:
+ *                  type: string
+ *                  example: uid001
+ *      responses:
+ *        '404':
+ *          description: Game not found
+ *        '409':
+ *          description: Game is not joinable, game is full, or uid has already joined
+ *        '500':
+ *          description: Internal Server Error
+ *        '201':
+ *          description: Join result
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  id:
+ *                    type: string
+ *                    example: game13579
+ *                  active:
+ *                    type: integer
+ *                    example: 1
+ *                  playersJoined:
+ *                    type: integer
+ *                    example: 3
+ *                  playerCount:
+ *                    type: integer
+ *                    example: 3
+ */
+app.post('/games/:gameId/join', async (req, res) => {
+  const { gameId } = req.params;
+  const { uid } = req.body;
+  if (typeof uid !== 'string' || !uid) {
+    return res.status(400).json({ error: 'Missing uid' });
+  }
+  try {
+    const gameRef = db.collection('games').doc(gameId);
+    const result = await db.runTransaction(async (tx) => {
+      const gameDoc = await tx.get(gameRef);
+      if (!gameDoc.exists) {
+        throw { status: 404, error: 'Game not found' };
+      }
+      const gameData = gameDoc.data();
+      if (gameData.active !== 0) {
+        throw { status: 409, error: 'Game is not joinable' };
+      }
+      if (gameData.players.length >= gameData.playerCount) {
+        throw { status: 409, error: 'Game is full' };
+      }
+      if (gameData.players.some(p => p.uid === uid)) {
+        throw { status: 409, error: 'Already joined' };
+      }
+
+      const newPlayers = [...gameData.players, { uid, hand: { '1': [], '2': [], '3': [] } }];
+      let table = gameData.table;
+      let active = gameData.active;
+
+      if (newPlayers.length === gameData.playerCount) {
+        // This join fills the game: deal tiles and activate
+        const pool = shuffle(buildFullTileSet());
+        newPlayers.forEach((player) => {
+          player.hand = { '1': pool.splice(0, 14), '2': [], '3': [] };
+        });
+        table = Object.fromEntries(Array.from({ length: 16 }, (_, i) => [String(i + 1), []]));
+        active = 1;
+      }
+
+      tx.update(gameRef, {
+        players: newPlayers,
+        table,
+        active,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { id: gameId, active, playersJoined: newPlayers.length, playerCount: gameData.playerCount };
+    });
+    res.status(201).json(result);
+  } catch (error) {
+    if (error && error.status) {
+      return res.status(error.status).json({ error: error.error });
+    }
+    console.error('Error joining game:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -317,14 +508,8 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
       return res.status(403).json({ error: 'Not your turn' });
     }
 
-    // Generate a random tile (Replace with actual tile generation logic)
-    // Generate a list of all possible tiles (Combine R,O,U,K with numbers 1-13, then double it for two sets)
-    const colors = ['R', 'O', 'U', 'K'];
-    const numbers = Array.from({ length: 13 }, (_, i) => i + 1);
-    const setTiles = colors.flatMap(color => numbers.map(num => `${color}${num}`));
-    // Add jokers if needed (for example, two jokers)
-    setTiles.push('J0');
-    const allTiles = [...setTiles, ...setTiles]; // Two sets of tiles
+    // Generate a random tile from the full pool
+    const allTiles = buildFullTileSet();
     
     // Grab all tiles currently in players' hands and on the table to determine which tiles are still available
     const handTiles = [];
