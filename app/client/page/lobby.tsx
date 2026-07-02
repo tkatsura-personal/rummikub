@@ -3,11 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import firebaseConfig from "../firebase";
+import Popup from "../components/popup";
+import ActionButton from "../components/Button";
 
 const backendLink = import.meta.env.VITE_BACKEND;
 
 export default function Lobby() {
     const [lobbyData, setLobbyData] = useState(null);
+    const [showCreatePopup, setShowCreatePopup] = useState(false);
+    const [playerCount, setPlayerCount] = useState(2);
     const navigate = useNavigate();
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -21,6 +25,11 @@ export default function Lobby() {
         marginBottom: "1rem",
         cursor: "pointer",
         transition: "border-color 0.15s",
+    }
+
+    const lobbyListCSS : CSSProperties = {
+        maxHeight: "70vh",
+        overflowY: "auto",
     }
 
     useEffect(() => {
@@ -41,9 +50,50 @@ export default function Lobby() {
         return new Date(timestamp._seconds * 1000).toLocaleDateString();
     };
 
+    const handleCreateGame = async () => {
+        setShowCreatePopup(false);
+        try {
+            const response = await fetch(`${backendLink}/games`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uid: user.uid, playerCount }),
+            });
+            const data = await response.json();
+            if (response.status === 201) {
+                navigate(`/game/${data.id}`);
+            } else {
+                alert(`Failed to create game: ${data.error}`);
+            }
+        } catch (error) {
+            console.error("Failed to create game:", error);
+        }
+    };
+
+    const handleJoinGame = async (gameId: string) => {
+        try {
+            const response = await fetch(`${backendLink}/games/${gameId}/join`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uid: user.uid }),
+            });
+            const data = await response.json();
+            if (response.status === 201) {
+                navigate(`/game/${gameId}`);
+            } else {
+                alert(`Could not join game: ${data.error}`);
+            }
+        } catch (error) {
+            console.error("Failed to join game:", error);
+        }
+    };
+
     return (
         <div style={{ padding: "2rem" }}>
-        <h2>Games in Lobby</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h2>Games in Lobby</h2>
+            <ActionButton label="Create Game" onClick={() => setShowCreatePopup(true)} />
+        </div>
+        <div style={lobbyListCSS}>
         {lobbyData != null ? lobbyData.map((game) => (
             <div
             key={game.id}
@@ -88,8 +138,34 @@ export default function Lobby() {
                 Winner: <span style={{ fontWeight: 500, color: "var(--color-text-primary)" }}>{game.winner}</span>
                 </p>
             )}
+
+            {/* Join button (only shows if the game is joinable and the current user isn't already in it) */}
+            {game.active === 0 && game.players.length < game.playerCount &&
+             !game.players.some((p) => p.uid === user.uid) && (
+                <div onClick={(e) => e.stopPropagation()} style={{ marginTop: "12px" }}>
+                    <ActionButton label="Join" onClick={() => handleJoinGame(game.id)} />
+                </div>
+            )}
             </div>
         )): "Loading Lobby Data..."}
+        </div>
+
+        {showCreatePopup && (
+            <Popup
+                message="Create a new game?"
+                onConfirm={handleCreateGame}
+                onCancel={() => setShowCreatePopup(false)}
+            >
+                <label>
+                    Number of players:{" "}
+                    <select value={playerCount} onChange={(e) => setPlayerCount(Number(e.target.value))}>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                        <option value={4}>4</option>
+                    </select>
+                </label>
+            </Popup>
+        )}
         </div>
     );
 }
