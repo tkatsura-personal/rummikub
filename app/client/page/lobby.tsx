@@ -1,7 +1,7 @@
 import { useEffect, useState, CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import firebaseConfig from "../firebase";
 import Popup from "../components/popup";
 import ActionButton from "../components/Button";
@@ -15,7 +15,11 @@ export default function Lobby() {
     const navigate = useNavigate();
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const user = auth.currentUser;
+    const [user, setUser] = useState<User | null>(null);
+
+    useEffect(() => {
+        return onAuthStateChanged(auth, setUser);
+    }, []);
 
     const lobbyCSS : CSSProperties = {
         background: "#009933",
@@ -35,7 +39,10 @@ export default function Lobby() {
     useEffect(() => {
         const fetchLobby = async () => {
         try {
-            const response = await fetch(`${backendLink}/games`);
+            const idToken = await user.getIdToken();
+            const response = await fetch(`${backendLink}/games`, {
+                headers: { "Authorization": `Bearer ${idToken}` },
+            });
             const data = await response.json();
             setLobbyData(data);
         } catch (error) {
@@ -43,8 +50,8 @@ export default function Lobby() {
         }
         };
 
-        if (user.uid) fetchLobby();
-    }, [user.uid]);
+        if (user) fetchLobby();
+    }, [user]);
 
     const formatDate = (timestamp) => {
         return new Date(timestamp._seconds * 1000).toLocaleDateString();
@@ -53,9 +60,10 @@ export default function Lobby() {
     const handleCreateGame = async () => {
         setShowCreatePopup(false);
         try {
+            const idToken = await user.getIdToken();
             const response = await fetch(`${backendLink}/games`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
                 body: JSON.stringify({ uid: user.uid, playerCount }),
             });
             const data = await response.json();
@@ -71,13 +79,14 @@ export default function Lobby() {
 
     const handleJoinGame = async (gameId: string) => {
         try {
+            const idToken = await user.getIdToken();
             const response = await fetch(`${backendLink}/games/${gameId}/join`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
                 body: JSON.stringify({ uid: user.uid }),
             });
             const data = await response.json();
-            if (response.status === 201) {
+            if (response.status === 200) {
                 navigate(`/game/${gameId}`);
             } else {
                 alert(`Could not join game: ${data.error}`);
@@ -86,6 +95,10 @@ export default function Lobby() {
             console.error("Failed to join game:", error);
         }
     };
+
+    if (!user) {
+        return <div style={{ padding: "2rem" }}>Loading...</div>;
+    }
 
     return (
         <div style={{ padding: "2rem" }}>

@@ -8,7 +8,7 @@ import TileSet from "../components/TileSet";
 import ActionButton from "../components/Button";
 import Popup from "../components/popup";
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged, User } from "firebase/auth";
 import firebaseConfig from "../firebase";
 
 const backendLink = import.meta.env.VITE_BACKEND;
@@ -36,7 +36,11 @@ export default function game() {
     const [activePopup, setActivePopup] = useState<PopupType>(null);
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const user = auth.currentUser;
+    const [user, setUser] = useState<User | null>(null);
+
+    useEffect(() => {
+        return onAuthStateChanged(auth, setUser);
+    }, []);
 
     const handleBoardTileChange = (setId: string, tileList: string[], hasHandTile: boolean, isValid: boolean) => {
         setTable(prev => ({...prev, [setId]: tileList}));
@@ -71,71 +75,83 @@ export default function game() {
 
     // Grab table of game13578 from backend
     useEffect(() => {
-        fetch(`${backendLink}/table/${gameId}`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            setTable(data);
-            setLoadingTable(false);
-        })
-        .catch(error => {
-            setErrorTable(error);
-            console.error("Error fetching table:", error);
+        if (!user) return;
+        user.getIdToken().then(idToken => {
+            fetch(`${backendLink}/table/${gameId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${idToken}`,
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                setTable(data);
+                setLoadingTable(false);
+            })
+            .catch(error => {
+                setErrorTable(error);
+                console.error("Error fetching table:", error);
+            });
         });
-    }, []);
+    }, [user]);
 
      // Grab hand of game13578 as uid123 from backend
     useEffect(() => {
-        fetch(`${backendLink}/hand/${gameId}/${user.uid}`, {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                Error("Player Not in Game");
-                return;
-            }
-            setHand(data.hand);
-            setLoadingHand(false);
-        })
-        .catch(error => {
-            setErrorHand(error);
-            console.error("Error fetching table:", error);
+        if (!user) return;
+        user.getIdToken().then(idToken => {
+            fetch(`${backendLink}/hand/${gameId}/${user.uid}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${idToken}`,
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    Error("Player Not in Game");
+                    return;
+                }
+                setHand(data.hand);
+                setLoadingHand(false);
+            })
+            .catch(error => {
+                setErrorHand(error);
+                console.error("Error fetching table:", error);
+            });
         });
-    }, []);
+    }, [user]);
     
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         closePopup();
+        if (!user) return;
         // Check if all sets are valid
         const allValid = Object.values(isValidSet).every(v => v);
         const oneHasHand = Object.values(hasHandTile).some(v => v);
         const body = JSON.stringify({table: table, hand: hand});
         if (allValid && oneHasHand) {
+            const idToken = await user.getIdToken();
             fetch(`${backendLink}/hand/${gameId}/${user.uid}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${idToken}`,
                 },
                 body: body
             })
-            .then(response => {
-                if (response.status === 201) {
+            .then(async response => {
+                const data = await response.json();
+                if (response.status === 200) {
                     setActivePopup("turn-successful");
-                } else if (response.status === 403) {
+                } else if (response.status === 409 && data.error === 'Not your turn') {
                     setActivePopup("not-your-turn");
-                } else if (response.status === 400) {
+                } else if (response.status === 409) {
                     setActivePopup("no-more-tiles");
                 } else if (!response.ok) {
                     alert(`Something went wrong! Error: ${response.status}`)
                 }
-                return response.json()})
+                return data})
             .then(data => {
                 console.log("Turn submitted");
             })
@@ -152,23 +168,27 @@ export default function game() {
 
     const drawHand = async () => {
         closePopup();
+        if (!user) return;
+        const idToken = await user.getIdToken();
         await fetch(`${backendLink}/tile/${gameId}/${user.uid}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${idToken}`,
             },
         })
-        .then(response => {
-                if (response.status === 201) {
+        .then(async response => {
+                const data = await response.json();
+                if (response.status === 200) {
                     setActivePopup("turn-successful");
-                } else if (response.status === 403) {
+                } else if (response.status === 409 && data.error === 'Not your turn') {
                     setActivePopup("not-your-turn");
-                } else if (response.status === 400) {
+                } else if (response.status === 409) {
                     setActivePopup("no-more-tiles");
                 } else if (!response.ok) {
                     alert(`Something went wrong! Error: ${response.status}`)
                 }
-                return response.json()})
+                return data})
         .then(data => {
             console.log(data);
             console.log("Turn submitted");

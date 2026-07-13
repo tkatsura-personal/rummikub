@@ -25,6 +25,30 @@ app.use(express.json());
 
 const db = admin.firestore();
 
+// Verifies the Firebase ID token in the Authorization header and attaches the caller's
+// uid to the request as req.uid, so route handlers can check it against any uid/userId
+// they're being asked to act on rather than trusting the URL/body blindly.
+async function verifyToken(req, res, next) {
+  if (req.path.startsWith('/api-docs')) {
+    return next();
+  }
+  const authHeader = req.headers.authorization || '';
+  const [scheme, idToken] = authHeader.split(' ');
+  if (scheme !== 'Bearer' || !idToken) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+  }
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    req.uid = decodedToken.uid;
+    next();
+  } catch (error) {
+    console.error('Error verifying ID token:', error);
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+app.use(verifyToken);
+
 // Build the full 106-tile Rummikub pool: colors R/O/U/K x numbers 1-13, doubled, plus two jokers (J0)
 function buildFullTileSet() {
   const colors = ['R', 'O', 'U', 'K'];
@@ -44,10 +68,14 @@ function shuffle(list) {
   return shuffled;
 }
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+// Vercel imports this module to get `app` as a serverless function handler rather than
+// running it as a long-lived process, so only bind a local port outside that environment.
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
 
 /**
  * @swagger
@@ -57,9 +85,11 @@ app.listen(PORT, () => {
  *      description: Retrieve a list of all users
  *      tags: [Users]
  *      responses:
- *        '500': 
+ *        '401':
+ *          description: Missing or invalid auth token
+ *        '500':
  *          description: Internal Server Error
- *        '201':
+ *        '200':
  *          description: A list of users
  *          content:
  *            application/json:
@@ -91,7 +121,7 @@ app.get('/users', async (req, res) => {
   try {
     const usersCol = await db.collection('users').get(); // Grab documents
     const users = usersCol.docs.map(doc => ({ id: doc.id, ...doc.data() })); // Map to array of user objects
-    res.status(201).json(users); // Send as JSON response
+    res.status(200).json(users); // Send as JSON response
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -106,9 +136,11 @@ app.get('/users', async (req, res) => {
  *      description: Retrieve a list of all games
  *      tags: [Games]
  *      responses:
- *        '500': 
+ *        '401':
+ *         description: Missing or invalid auth token
+ *        '500':
  *         description: Internal Server Error
- *        '201':
+ *        '200':
  *          description: A list of games
  *          content:
  *            application/json:
@@ -170,7 +202,7 @@ app.get('/games', async (req, res) => {
       delete game.table;
       game.players = game.players.map(player => ({ uid: player.uid })); // Only include uid for each player
     });
-    res.status(201).json(games); // Send as JSON response
+    res.status(200).json(games); // Send as JSON response
   } catch (error) {
     console.error('Error fetching games:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -200,6 +232,10 @@ app.get('/games', async (req, res) => {
  *      responses:
  *        '400':
  *          description: Missing uid, or playerCount not an integer between 2 and 4
+ *        '401':
+ *          description: Missing or invalid auth token
+ *        '403':
+ *          description: uid does not match the authenticated user
  *        '500':
  *          description: Internal Server Error
  *        '201':
@@ -217,6 +253,9 @@ app.post('/games', async (req, res) => {
   const { uid, playerCount } = req.body;
   if (typeof uid !== 'string' || !uid) {
     return res.status(400).json({ error: 'Missing uid' });
+  }
+  if (uid !== req.uid) {
+    return res.status(403).json({ error: 'uid does not match authenticated user' });
   }
   if (!Number.isInteger(playerCount) || playerCount < 2 || playerCount > 4) {
     return res.status(400).json({ error: 'playerCount must be between 2 and 4' });
@@ -266,13 +305,17 @@ app.post('/games', async (req, res) => {
  *                  type: string
  *                  example: uid001
  *      responses:
+ *        '401':
+ *          description: Missing or invalid auth token
+ *        '403':
+ *          description: uid does not match the authenticated user
  *        '404':
  *          description: Game not found
  *        '409':
  *          description: Game is not joinable, game is full, or uid has already joined
  *        '500':
  *          description: Internal Server Error
- *        '201':
+ *        '200':
  *          description: Join result
  *          content:
  *            application/json:
@@ -297,6 +340,9 @@ app.post('/games/:gameId/join', async (req, res) => {
   const { uid } = req.body;
   if (typeof uid !== 'string' || !uid) {
     return res.status(400).json({ error: 'Missing uid' });
+  }
+  if (uid !== req.uid) {
+    return res.status(403).json({ error: 'uid does not match authenticated user' });
   }
   try {
     const gameRef = db.collection('games').doc(gameId);
@@ -339,7 +385,7 @@ app.post('/games/:gameId/join', async (req, res) => {
 
       return { id: gameId, active, playersJoined: newPlayers.length, playerCount: gameData.playerCount };
     });
-    res.status(201).json(result);
+    res.status(200).json(result);
   } catch (error) {
     if (error && error.status) {
       return res.status(error.status).json({ error: error.error });
@@ -364,11 +410,13 @@ app.post('/games/:gameId/join', async (req, res) => {
  *            type: string
  *          description: The ID of the game to retrieve the table for
  *      responses:
+ *        '401':
+ *          description: Missing or invalid auth token
  *        '404':
  *          description: Game not found
  *        '500':
  *          description: Internal Server Error
- *        '201':
+ *        '200':
  *          description: Table data for the specified game
  *          content:
  *            application/json:
@@ -389,7 +437,7 @@ app.get('/table/:gameId', async (req, res) => {
       return res.status(404).json({ error: 'Game not found' });
     }
     const table = gameDoc.data().table; // Extract table data from document
-    return res.status(201).json(table); // Send as JSON response
+    return res.status(200).json(table); // Send as JSON response
   } catch (error) {
     console.error('Error fetching table:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -417,11 +465,15 @@ app.get('/table/:gameId', async (req, res) => {
  *            type: string
  *          description: The ID of the user to retrieve the hand for
  *      responses:
+ *        '401':
+ *          description: Missing or invalid auth token
+ *        '403':
+ *          description: userId does not match the authenticated user
  *        '404':
  *          description: Game not found or player not found in game
  *        '500':
  *          description: Internal Server Error
- *        '201':
+ *        '200':
  *          description: Hand data for the specified player in the specified game
  *          content:
  *            application/json:
@@ -434,6 +486,9 @@ app.get('/table/:gameId', async (req, res) => {
  */
 app.get('/hand/:gameId/:userId', async (req, res) => {
   const { gameId, userId } = req.params;
+  if (userId !== req.uid) {
+    return res.status(403).json({ error: 'userId does not match authenticated user' });
+  }
   try {
     const gameDoc = await db.collection('games').doc(gameId).get(); // Grab game document by gameId
     if (!gameDoc.exists) {
@@ -444,7 +499,7 @@ app.get('/hand/:gameId/:userId', async (req, res) => {
     if (!player) {
       return res.status(404).json({ error: 'Player not found in this game' });
     }
-    return res.status(201).json({ hand: player.hand }); // Send player's hand as JSON response
+    return res.status(200).json({ hand: player.hand }); // Send player's hand as JSON response
   } catch (error) {
     console.error('Error fetching hand:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -472,13 +527,17 @@ app.get('/hand/:gameId/:userId', async (req, res) => {
  *            type: string
  *          description: The ID of the user to draw a tile for
  *      responses:
- *        '400':
+ *        '401':
+ *          description: Missing or invalid auth token
+ *        '403':
+ *          description: userId does not match the authenticated user
+ *        '409':
  *          description: No more tiles available or not player's turn
  *        '404':
  *          description: Game not found or player not found in game
  *        '500':
  *          description: Internal Server Error
- *        '201':
+ *        '200':
  *          description: The new tile drawn for the player
  *          content:
  *            application/json:
@@ -491,6 +550,9 @@ app.get('/hand/:gameId/:userId', async (req, res) => {
  */
 app.post('/tile/:gameId/:userId', async (req, res) => {
   const { gameId, userId } = req.params;
+  if (userId !== req.uid) {
+    return res.status(403).json({ error: 'userId does not match authenticated user' });
+  }
   try {
     const gameRef = db.collection('games').doc(gameId);
     const gameDoc = await gameRef.get(); // Grab game document by gameId
@@ -505,7 +567,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
 
     // Check if uid matches currentTurnId in game document to ensure it's the player's turn
     if (gameData.players[gameData.currentTurnIndex].uid !== userId) {
-      return res.status(403).json({ error: 'Not your turn' });
+      return res.status(409).json({ error: 'Not your turn' });
     }
 
     // Generate a random tile from the full pool
@@ -533,7 +595,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
     }
 
     if (availableTiles.length === 0) {
-      return res.status(400).json({ error: 'No more tiles available' });
+      return res.status(409).json({ error: 'No more tiles available' });
     }
     
     const newTile = availableTiles[Math.floor(Math.random() * availableTiles.length)]; // Randomly select a tile from available tiles
@@ -551,7 +613,7 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
     // Update the game document with the new hand, current turn index, and round in game document
     await gameRef.update({ players: gameData.players, currentTurnIndex: nextIndex, turnNumber: gameData.turnNumber });
     
-    res.status(201).json({ newTile }); // Send the new tile as JSON response
+    res.status(200).json({ newTile }); // Send the new tile as JSON response
   } catch (error) {
     console.error('Error generating tile:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -663,6 +725,9 @@ function checkSet(tiles) {
  */
 app.post('/hand/:gameId/:userId', async (req, res) => {
   const { gameId, userId } = req.params;
+  if (userId !== req.uid) {
+    return res.status(403).json({ error: 'userId does not match authenticated user' });
+  }
   try {
     const gameRef = db.collection('games').doc(gameId);
     const gameDoc = await gameRef.get(); // Grab game document by gameId
@@ -674,10 +739,10 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
     if (playerIndex === -1) {
       return res.status(404).json({ error: 'Player not found in this game' });
     }
-    
+
     // Check if uid matches currentTurnId in game document to ensure it's the player's turn
     if (gameData.players[gameData.currentTurnIndex].uid !== userId) {
-      return res.status(403).json({ error: 'Not your turn' });
+      return res.status(409).json({ error: 'Not your turn' });
     }
 
     const submittedTurn = req.body; // Get submitted turn data from request body
@@ -708,13 +773,13 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
 
     // Check if the submitted turn is valid by comparing the starting tiles and ending tiles
     if (!equalLists(startingTiles, endingTiles)) {
-      return res.status(400).json({ error: 'Invalid turn: Tiles do not match starting hand and table' });
+      return res.status(409).json({ error: 'Invalid turn: Tiles do not match starting hand and table' });
     }
 
     // Check that every non-empty group placed on the table is a structurally legal set/run
     for (const group in table) {
       if (table[group].length > 0 && !checkSet(table[group])) {
-        return res.status(400).json({ error: 'Invalid turn: table contains an invalid set', group });
+        return res.status(409).json({ error: 'Invalid turn: table contains an invalid set', group });
       }
     }
 
@@ -734,7 +799,7 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
 
     // Update the game document with the new hand
     // await game.update({ players: gameData.players });    
-    res.status(201).json({ }); // Send the new tile as JSON response
+    res.status(200).json({ }); // Send the new tile as JSON response
   } catch (error) {
     console.error('Error submitting turn:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -743,3 +808,5 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
 
 // Swagger UI route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+export default app;
