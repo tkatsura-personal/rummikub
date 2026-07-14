@@ -2,7 +2,6 @@
   "type": "module",
   "scripts": {
     "dev": "node server.js dev",
-    "build": "node server.js build",
     "start": "node server.js"
   },
   "dependencies": {
