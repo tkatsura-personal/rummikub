@@ -532,7 +532,7 @@ app.get('/hand/:gameId/:userId', async (req, res) => {
  *        '403':
  *          description: userId does not match the authenticated user
  *        '409':
- *          description: No more tiles available or not player's turn
+ *          description: No more tiles available, not player's turn, or game is not active
  *        '404':
  *          description: Game not found or player not found in game
  *        '500':
@@ -563,6 +563,10 @@ app.post('/tile/:gameId/:userId', async (req, res) => {
     const playerIndex = gameData.players.findIndex(p => p.uid === userId); // Find player index in game by userId
     if (playerIndex === -1) {
       return res.status(404).json({ error: 'Player not found in this game' });
+    }
+
+    if (gameData.active !== 1) {
+      return res.status(409).json({ error: 'Game is not active' });
     }
 
     // Check if uid matches currentTurnId in game document to ensure it's the player's turn
@@ -740,6 +744,10 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
       return res.status(404).json({ error: 'Player not found in this game' });
     }
 
+    if (gameData.active !== 1) {
+      return res.status(409).json({ error: 'Game is not active' });
+    }
+
     // Check if uid matches currentTurnId in game document to ensure it's the player's turn
     if (gameData.players[gameData.currentTurnIndex].uid !== userId) {
       return res.status(409).json({ error: 'Not your turn' });
@@ -787,19 +795,29 @@ app.post('/hand/:gameId/:userId', async (req, res) => {
     gameData.table = table;
     gameData.players[playerIndex].hand = hand;
 
-    // Move to the next player's turn and increment round if we loop back to the first player
-    const currentIndex = gameData.currentTurnIndex;
-    const nextIndex = (currentIndex + 1) % gameData.players.length;
-    if (nextIndex === 0) {
-      gameData.turnNumber += 1; // Increment round if we loop back to the first player
+    // A player wins by emptying their hand; the game ends immediately rather than advancing the turn
+    const handIsEmpty = Object.values(hand).every(group => group.length === 0);
+
+    const updates = { table: gameData.table, players: gameData.players };
+
+    if (handIsEmpty) {
+      updates.winner = userId;
+      updates.active = 2;
+    } else {
+      // Move to the next player's turn and increment round if we loop back to the first player
+      const currentIndex = gameData.currentTurnIndex;
+      const nextIndex = (currentIndex + 1) % gameData.players.length;
+      if (nextIndex === 0) {
+        gameData.turnNumber += 1; // Increment round if we loop back to the first player
+      }
+      updates.currentTurnIndex = nextIndex;
+      updates.turnNumber = gameData.turnNumber;
     }
 
     // Submit hand and table data to game document, along with next player's turn index and round number
-    await gameRef.update({ table: gameData.table, players: gameData.players, currentTurnIndex: nextIndex, turnNumber: gameData.turnNumber });
+    await gameRef.update(updates);
 
-    // Update the game document with the new hand
-    // await game.update({ players: gameData.players });    
-    res.status(200).json({ }); // Send the new tile as JSON response
+    res.status(200).json({ winner: handIsEmpty ? userId : null });
   } catch (error) {
     console.error('Error submitting turn:', error);
     res.status(500).json({ error: 'Internal Server Error' });
